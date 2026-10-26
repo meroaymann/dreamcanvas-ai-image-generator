@@ -22,7 +22,7 @@ An **AI Image Generator** web app built with **Flask**. Type a text prompt, pick
 
 | Mobile |
 |---|
-| <img src="screenshots/mobile.png" alt="Mobile view" width="300"> |
+| <img src="screenshots/mobile.jpeg" alt="Mobile view" width="300"> |
 
 ---
 
