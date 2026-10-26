@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="DreamCanvas: turn text into AI-generated images in different styles and sizes.">
+  <title>DreamCanvas · AI Image Generator</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎨</text></svg>">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+  <!-- Apply dark mode before the page shows (no flash) -->
+  <script>
+    try {
+      const t = localStorage.getItem("theme");
+      const dark = t ? t === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+    } catch (e) {}
+  </script>
+</head>
+<body>
+
+  <!-- ===== Top bar ===== -->
+  <header class="topbar container">
+    <div class="brand">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3l1.9 5.8L20 11l-6.1 2.2L12 19l-1.9-5.8L4 11l6.1-2.2z"/>
+          <path d="M19 3v4M17 5h4"/>
+        </svg>
+      </div>
+      <span>DreamCanvas</span>
+    </div>
+    <button id="themeToggle" class="icon-btn" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
+  </header>
+
+  <!-- ===== Hero ===== -->
+  <section class="hero container">
+    <span class="badge">✨ AI Image Generator</span>
+    <h1>Turn your <span class="gradient-text">words</span> into art</h1>
+    <p>Describe anything you can imagine, pick a style, and DreamCanvas will paint it for you in seconds.</p>
+  </section>
+
+  <!-- ===== Workspace: controls + preview ===== -->
+  <main class="workspace container">
+
+    <!-- Controls -->
+    <section class="card controls">
+      <label for="prompt" class="label">Your prompt</label>
+      <div class="prompt-box">
+        <textarea id="prompt" maxlength="500" rows="4" dir="auto"
+          placeholder="e.g. A cozy cabin in a snowy forest at night, warm lights in the windows"></textarea>
+        <span id="charCount" class="char-count">0 / 500</span>
+      </div>
+
+      <div class="examples">
+        <span class="mini-label">Try an idea:</span>
+        <button class="example-chip" data-prompt="A futuristic Cairo skyline at sunset with flying cars and glowing pyramids">🏙️ Futuristic Cairo</button>
+        <button class="example-chip" data-prompt="A cute cat astronaut floating in space, surrounded by colorful planets">🐱 Cat astronaut</button>
+        <button class="example-chip" data-prompt="A cozy wooden cabin in a snowy forest at night, warm light glowing from the windows">🏡 Cozy cabin</button>
+        <button class="example-chip" data-prompt="A majestic dragon made of crystal flying over a misty mountain lake">🐉 Crystal dragon</button>
+      </div>
+
+      <span class="label spaced">Style</span>
+      <div class="style-grid">
+        <button class="style-option active" data-style="none">✨<span>No style</span></button>
+        <button class="style-option" data-style="realistic">📷<span>Realistic</span></button>
+        <button class="style-option" data-style="anime">🌸<span>Anime</span></button>
+        <button class="style-option" data-style="3d">🧸<span>3D</span></button>
+        <button class="style-option" data-style="watercolor">🎨<span>Watercolor</span></button>
+        <button class="style-option" data-style="cyberpunk">🌃<span>Cyberpunk</span></button>
+        <button class="style-option" data-style="sketch">✏️<span>Sketch</span></button>
+      </div>
+
+      <span class="label spaced">Size</span>
+      <div class="size-group">
+        <button class="size-option active" data-size="square"><span class="shape square"></span>Square</button>
+        <button class="size-option" data-size="landscape"><span class="shape landscape"></span>Landscape</button>
+        <button class="size-option" data-size="portrait"><span class="shape portrait"></span>Portrait</button>
+      </div>
+
+      <button id="generateBtn" class="generate-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 4V2M15 16v-2M8 9h2M20 9h2M17.8 11.8 19 13M17.8 6.2 19 5M3 21l9-9M12.2 6.2 11 5"/>
+        </svg>
+        <span>Generate image</span>
+      </button>
+      <p class="hint">Tip: press Ctrl + Enter to generate</p>
+    </section>
+
+    <!-- Preview -->
+    <section class="card preview-card">
+      <span class="label">Preview</span>
+
+      <div id="preview" class="preview" aria-live="polite">
+        <div id="emptyState" class="empty-state">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="3"/>
+            <circle cx="9" cy="9" r="2"/>
+            <path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/>
+          </svg>
+          <h3>Your image will appear here</h3>
+          <p>Write a prompt and click Generate.</p>
+        </div>
+
+        <div id="loadingState" class="loading-state hidden">
+          <div class="loader"></div>
+          <p id="loadingText">Mixing the colors…</p>
+          <span id="loadingTimer" class="timer">0s</span>
+        </div>
+
+        <img id="resultImage" class="result-image hidden" alt="">
+
+        <div id="errorState" class="error-state hidden">
+          <p id="errorText"></p>
+        </div>
+      </div>
+
+      <div id="resultInfo" class="result-info hidden">
+        <p id="resultPrompt" class="result-prompt"></p>
+        <div class="result-tags">
+          <span id="resultStyle" class="tag"></span>
+          <span id="resultSize" class="tag"></span>
+        </div>
+        <div class="result-actions">
+          <a id="downloadBtn" class="action-btn primary" href="#" download>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+            </svg>
+            Download
+          </a>
+          <button id="regenerateBtn" class="action-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/>
+            </svg>
+            Regenerate
+          </button>
+          <button id="copyPromptBtn" class="action-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="12" height="12" rx="2"/>
+              <path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/>
+            </svg>
+            <span>Copy prompt</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ===== Gallery ===== -->
+  <section class="gallery-section container">
+    <div class="gallery-header">
+      <div>
+        <h2>Gallery &amp; history</h2>
+        <p class="muted">Your creations are saved in your browser. Hover an image and click ↺ Use again to remix its prompt.</p>
+      </div>
+      <button id="clearGallery" class="text-btn">Clear all</button>
+    </div>
+    <div id="gallery" class="gallery"></div>
+    <p id="galleryEmpty" class="gallery-empty">No images yet. Your creations will show up here. 🎨</p>
+  </section>
+
+  <footer class="footer container">
+    Made by Amira Ayman · Images generated with
+    <a href="https://pollinations.ai" target="_blank" rel="noopener">Pollinations.ai</a>
+  </footer>
+
+  <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
